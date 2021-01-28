@@ -1,3 +1,8 @@
+// asdf to walk
+// jkl; to mine/place
+// m to lock walk
+// pn to scroll through things
+
 var localPlayerWalkRepeatDirections = [];
 var localPlayerWalkBuffer = -1;
 var lockWalkDir = -1;
