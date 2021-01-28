@@ -88,36 +88,28 @@ Player.prototype.teleport = function (n) {
     var dir;
     var x = -n.x;
     var y = -n.y;
+    var xodir = x < 0 ? 1 : 3;
+    var yodir = y < 0 ? 2 : 0;
+    var xvdir = x < 0 ? 1 : -1;
+    var yvdir = y < 0 ? 1 : -1;
     for (var i = 0; i < 20; i++) {
 	if (x == 0 && y == 0) {
 	    break;
 	}
 	if (Math.abs(y * n.x) > Math.abs(x * n.y) || x == 0) {
-	    if (y < 0) {
-		y++;
-		dir = 2;
-	    }
-	    else if (y > 0) {
-		y--;
-		dir = 0;
-	    }
+	    y += yvdir;
+	    dir = yodir;
 	}
 	else {
-	    if (x < 0) {
-		x++;
-		dir = 1;
-	    }
-	    else {
-		x--;
-		dir = 3;
-	    }
+	    x += xvdir;
+	    dir = xodir;
 	}
-	localPlayer.walk(dir);
-	localPlayer.walkDelay = 0;
+	this.walk(dir);
+	this.walkDelay = 0;
     }
 }
 
-Player.prototype.teleport = function (n)
+/*Player.prototype.teleport = function (n)
 {
     var v = n.copy();
     v.subtract(this.pos);
@@ -145,7 +137,7 @@ Player.prototype.teleport = function (n)
 	this.walkDelay = 0;
     }
     // absolutely.
-}
+}*/
 
 Player.prototype.teleportNearest = function (tiles)
 {
@@ -165,7 +157,7 @@ Player.prototype.teleportNearest = function (tiles)
 	}
 	else
 	{
-	    v.x = this.pos.y > cursorPos.y ? -1 : 1;
+	    v.x = cursorPos.y > this.pos.y ? -1 : 1;
 	    v.y = cursorPos.x < this.pos.x ? -1 : cursorPos.x > this.pos.x ? 1 : cursorPos.y <= this.pos.y ? 1 : -1;
 	}
 	//console.log(v);
@@ -180,7 +172,6 @@ Player.prototype.teleportNearest = function (tiles)
 	    }
 	}
     }
-    foundTileThing:
     //console.log(cursorPos);
     if (foundTile)
     {
@@ -310,7 +301,7 @@ function keyDownEvent(event) {
 	else if (key == "j")
 	    localPlayer.placeOrRemoveTile(3);
 	else if (key == "v")
-	    localPlayer.teleportNearest(132);
+	    localPlayer.teleportNearest([145,146,147]);
 	else if (key == "m")
 	    lockWalkDir = localPlayerWalkBuffer >= 0 ? localPlayerWalkBuffer : localPlayerWalkRepeatDirections.length ? localPlayerWalkRepeatDirections[localPlayerWalkRepeatDirections.length - 1] : -1;
         else if (keyCode == 189 || keyCode == 173) {
