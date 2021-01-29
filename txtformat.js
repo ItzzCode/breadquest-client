@@ -2,7 +2,6 @@
 var fileInput = document.createElement("input");
 fileInput.setAttribute("type", "file");
 fileInput.multiple = true;
-document.body.appendChild(fileInput);
 function loadFile(file) {
     var fileReader = new FileReader();
     fileReader.addEventListener("loadend", function(e) {
@@ -59,3 +58,7 @@ fileInput.addEventListener("change", function() {
 	loadFile(file);
     }
 }, false);
+
+
+
+document.body.appendChild(fileInput);
