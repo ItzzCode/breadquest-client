@@ -109,36 +109,6 @@ Player.prototype.teleport = function (n) {
     }
 }
 
-/*Player.prototype.teleport = function (n)
-{
-    var v = n.copy();
-    v.subtract(this.pos);
-    n.subtract(this.pos);
-    var xdir = v.x < 0 ? 1 : 3;
-    var ydir = v.y < 0 ? 2 : 0;
-    var xa = new Pos(v.x < 0 ? -1 : 1, 0);
-    var ya = new Pos(0, v.y < 0 ? -1 : 1);
-    // can you hear me?
-    for (var i = 0; i < 32; i++) // safe while true
-    {
-	if (n.x == 0 && n.y == 0)
-	    break;
-	var bool = n.y == 0 ? true : Math.abs(n.y * v.x) < Math.abs(v.y * n.x);
-	if (bool)
-	{
-	    n.add(xa);
-	    this.walk(xdir);
-	}
-	else
-	{
-	    n.add(xa);
-	    this.walk(ydir);
-	}
-	this.walkDelay = 0;
-    }
-    // absolutely.
-}*/
-
 Player.prototype.teleportNearest = function (tiles)
 {
     if (typeof(tiles) == "number")
@@ -146,9 +116,8 @@ Player.prototype.teleportNearest = function (tiles)
     var cursorPos = this.pos.copy();
     var v = new Pos(0, 0);
     var foundTile = false;
-    console.log(cursorPos);
     search:
-    for (var i = 0; i < 200; i++)
+    for (var i = 0; i < 450; i++)
     {
 	if (cursorPos.x >= this.pos.x && cursorPos.y == this.pos.y)
 	{
@@ -160,7 +129,6 @@ Player.prototype.teleportNearest = function (tiles)
 	    v.x = cursorPos.y > this.pos.y ? -1 : 1;
 	    v.y = cursorPos.x < this.pos.x ? -1 : cursorPos.x > this.pos.x ? 1 : cursorPos.y <= this.pos.y ? 1 : -1;
 	}
-	//console.log(v);
 	cursorPos.add(v); // +=
 	var bufferValue = getTileBufferValue(cursorPos);
 	for (var tile of tiles)
@@ -172,10 +140,8 @@ Player.prototype.teleportNearest = function (tiles)
 	    }
 	}
     }
-    //console.log(cursorPos);
     if (foundTile)
     {
-	console.log(i, cursorPos, getTileBufferValue(cursorPos));
 	this.teleport (cursorPos);
 	return true;
     }
@@ -300,7 +266,7 @@ function keyDownEvent(event) {
 	    localPlayer.placeOrRemoveTile(2);
 	else if (key == "j")
 	    localPlayer.placeOrRemoveTile(3);
-	else if (key == "v")
+	else if (key == "h")
 	    localPlayer.teleportNearest([145,146,147]);
 	else if (key == "m")
 	    lockWalkDir = localPlayerWalkBuffer >= 0 ? localPlayerWalkBuffer : localPlayerWalkRepeatDirections.length ? localPlayerWalkRepeatDirections[localPlayerWalkRepeatDirections.length - 1] : -1;
