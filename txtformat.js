@@ -19,7 +19,7 @@ function loadFile(file) {
 	while (lastBreak + lineLength < result.length)
 	{
 	    var j = result.indexOf("\n", lastBreak + 1);
-	    if (j < lastBreak + lineLength) // there's another break in time
+	    if (j <= lastBreak + lineLength) // there's another break in time
 	    {
 		lastBreak = j;
 	    }
