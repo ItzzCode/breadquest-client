@@ -22,6 +22,7 @@ Mel3 | -2024, -410
 Mel4 / rainbow lounge | -23, 5908
 Mel5 | -59, 7651
 Mel6 | 47, 22628
+Mel7 | -60, 25833
 Wikitown | 15701, -596
 Small Wikitown | 9103, -617
 Boteram cave | 16044, 797
