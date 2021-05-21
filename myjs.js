@@ -9,6 +9,7 @@ var localPlayerWalkBuffer = -1;
 var lockWalkDir = -1;
 const KEYS = {w: 65, s: 83, e: 68, n: 70};
 
+var speedbps = 1/16;
 
 var areasString = `\
 Spawn | 111, 31
@@ -26,9 +27,11 @@ Mel7 | -60, 25833
 Wikitown | 15701, -596
 Small Wikitown | 9103, -617
 Boteram cave | 16044, 797
-WhileTrue Zone | -3557, -1100`;
+WhileTrue Zone | -3557, -1100
+Boteram vertical 1 | 14132, 12336`;
 /*
   Votgil tunnel: -3548+, -1100
+  Boteram tunnel: 15701, -596+
   Lone Oven | -4683, -6020
   Lone Hospital | -4794, -6035
 */
@@ -169,7 +172,9 @@ Player.prototype.walk = function(direction) {
 	}
     }
     this.walkMotion (direction);
-    this.walkDelay = (1 / 16) * framesPerSecond;
+    this.walkDelay = speedbps * framesPerSecond;
+    for (var service of services)
+	service.onwalk(direction);
     return true;
 }
 
@@ -693,6 +698,16 @@ Player.prototype.collectTileConditional = function(direction) {
     }
 }
 
+Player.prototype.breakColorTileConditional = function(direction) {
+    var tempPos = this.getPosInWalkDirection(direction);
+    var tempTile = getTileBufferValue(tempPos);
+    var bool = tempTile >= blockStartTile && tempTile < blockStartTile + blockTileAmount;
+    if (bool) {
+	this.removeTile(direction);
+    }
+    return bool;
+}
+
 Player.prototype.canWalkInDir = function (dir)
 {
     return localPlayer.canWalkThroughTile(getTileBufferValue(localPlayer.getPosInWalkDirection(dir)));
@@ -703,6 +718,7 @@ class Service  {
 	this.running = false;
 	services.push(this);
     }
+    onwalk() {}
     ondie() {}
     ongetchat() {}
     timerEvent() {}
@@ -710,6 +726,7 @@ class Service  {
     stop() {this.running = false;}
 }
 
+var leaveTilesBehind = new Service();
 
 var bore = new Service();
 bore.interval = -1;
@@ -728,8 +745,8 @@ bore.step = function (dir)
     }
     for (var i = 0; i < c; ++i)
     {
-	localPlayer.collectTileConditional((dir + 1) & 3);
-	localPlayer.collectTileConditional((dir - 1) & 3);
+	//localPlayer.breakColorTileConditional((dir + 1) & 3);
+	//localPlayer.breakColorTileConditional((dir - 1) & 3);
 	if (bore.right)
 	    localPlayer.placeTile((dir + 1) & 3);
 	if (bore.left)
@@ -764,14 +781,25 @@ bore.ondie = function ()
     bore.stop();
 };
 
-function snakeMovePlayer (minx, maxx, yoff, callback, objecet)
+function getSnakeDir (minx, maxx, yoff)
 {
     var east = (localPlayer.pos.y - yoff) & 1;
     var dir = east ? 1 : 3;
     if ((localPlayer.pos.x == minx && !east) ||
 	(localPlayer.pos.x == maxx && east))
 	dir = 2;
-    var blocked = !localPlayer.canWalkThroughTile(getTileBufferValue(localPlayer.getPosInWalkDirection(dir)));
+    return dir;
+}
+
+Player.prototype.blockedInDir = function (dir)
+{
+    return !this.canWalkThroughTile(getTileBufferValue(this.getPosInWalkDirection(dir)));
+}
+
+function snakeMovePlayer (minx, maxx, yoff, callback, objecet)
+{
+    var dir = getSnakeDir (minx, maxx, yoff);
+    var blocked = localPlayer.blockedInDir (dir);
     var delay = 70;
     if (blocked)
     {
@@ -782,6 +810,72 @@ function snakeMovePlayer (minx, maxx, yoff, callback, objecet)
 	localPlayer.walkMotion (dir);
 	callback();
     }, delay);
+}
+
+
+var symbolArea = new Service();
+symbolArea.x0 = 0;
+symbolArea.x1 = 0;
+symbolArea.y0 = 0;
+symbolArea.y1 = 0;
+symbolArea.step = function()
+{
+    if (localPlayer.pos.y <= symbolArea.y1 && localPlayer.pos.y >= symbolArea.y0)
+    {
+	placeSymbolTile(0x5f);
+	snakeMovePlayer (symbolArea.x0, symbolArea.x1, 0, symbolArea.step, symbolArea);
+    }
+    else
+	this.running = false;
+}
+symbolArea.start = function(x0, y0, x1, y1)
+{
+    symbolArea.x0 = x0;
+    symbolArea.y0 = y0;
+    symbolArea.x1 = x1;
+    symbolArea.y1 = y1;
+    symbolArea.step ();
+    this.running = true;
+}
+symbolArea.stop = function ()
+{
+    clearInterval (symbolArea.interval);
+    this.running = false;
+}
+symbolArea.ondie = function ()
+{
+    symbolArea.stop();
+}
+
+
+
+var breakArea = new Service();
+breakArea.x0 = 0;
+breakArea.x1 = 0;
+breakArea.y0 = 0;
+breakArea.y1 = 0;
+breakArea.step = function()
+{
+    if (localPlayer.pos.y <= breakArea.y1 && localPlayer.pos.y >= breakArea.y0)
+	snakeMovePlayer (breakArea.x0, breakArea.x1, 0, breakArea.step, breakArea);
+}
+breakArea.start = function(x0, y0, x1, y1)
+{
+    breakArea.x0 = x0;
+    breakArea.y0 = y0;
+    breakArea.x1 = x1;
+    breakArea.y1 = y1;
+    breakArea.step ();
+    this.running = true;
+}
+breakArea.stop = function ()
+{
+    clearInterval (breakArea.interval);
+    this.running = false;
+}
+breakArea.ondie = function ()
+{
+    breakArea.stop();
 }
 
 var rule = new Service();
@@ -871,3 +965,7 @@ selectInventoryItem(7);
 centerSelectedInventoryItem();
 window.onkeydown = keyDownEvent;
 window.onkeyup = keyUpEvent;
+
+
+//breakArea.start (-15, 57, -2, 135)
+//breakArea.start(2,85,14,137)
