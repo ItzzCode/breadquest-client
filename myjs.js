@@ -10,11 +10,14 @@ var lockWalkDir = -1;
 const KEYS = {w: 65, s: 83, e: 68, n: 70};
 
 var speedbps = 1/16;
+var minimapScale = .01;
+
+var delayForBreak = 70;
 
 var areasString = `\
 Spawn | 111, 31
 Stantown | -1719, -2094
-Duty Outpost | -1367, -2991
+Dusty Outpost | -1367, -2991
 Tuxtown | 175, -3775
 Musty Outpost | -815, -3617
 Mel | -4279, -10639
@@ -24,17 +27,31 @@ Mel4 / rainbow lounge | -23, 5908
 Mel5 | -59, 7651
 Mel6 | 47, 22628
 Mel7 | -60, 25833
+Mel8, 2021-05-24 | 22, 37081
+Mel9, 2021-05-24 | 8640, 50014
 Wikitown | 15701, -596
 Small Wikitown | 9103, -617
 Boteram cave | 16044, 797
 WhileTrue Zone | -3557, -1100
-Boteram vertical 1 | 14132, 12336`;
+Boteram vertical 1 | 14132, 12336
+Boteram vertical 2 | 15704, 21858
+Boteram vertical 3 by melody, a few days before 2021-05-24 | 15678, 29352
+Boteram vertical 4 | 15669, 33596
+deep bread, 2021-03-28 | 15811, 42440`;
 /*
-  Votgil tunnel: -3548+, -1100
-  Boteram tunnel: 15701, -596+
-  Lone Oven | -4683, -6020
-  Lone Hospital | -4794, -6035
-*/
+Votgil tunnel: -3548/-2759, -1100
+Wiki road: west -186/23195, -596
+Boteram vertical: 15701, -596 south
+WhileTrue V0tgil tunnel | -3548/-2759, -1100
+Pointless road | -1000, -3551/-2991
+[unnamed road] | -3106, -1100/0
+TOCC | -2671, -10
+
+Lone Oven | -4683, -6020
+Lone Hospital | -4794, -6035
+
+People break me | 15743, 10182
+ */
 
 var restAreas = [];
 var pauseOnRestArea = false;
@@ -137,7 +154,6 @@ Player.prototype.walkMotion = function (direction)
 {
     var tempPos = this.getPosInWalkDirection(direction);
     this.pos.set(tempPos);
-    placeLocalPlayerTrail(this.pos);
     addWalkCommand(direction);
 }
 
@@ -243,6 +259,10 @@ Player.prototype.teleportNearest = function (tiles)
     }
     else
 	return false;
+}
+
+function performWalkCommand(command) {
+    var tempPos = createPosFromJson(command.pos);
 }
 
 function performAddChatMessageCommand(command) {
@@ -464,6 +484,16 @@ var clearDark = function()
     context.fillRect(0, 0, canvasSize, canvasSize);
 }
 
+function clearCanvas ()
+{
+    var color = inventoryItemList[selectedInventoryItemIndex].tile - blockStartTile;
+    if (color < 0 || color >= 8)
+	context.fillStyle = "#fff";
+    else
+	context.fillStyle = ["#a00", "#a50", "#550", "#050", "#055", "#00a", "#505", "#333"][color];
+    context.fillRect(0, 0, canvasSize, canvasSize);
+}
+
 function setDarkMode()
 {
     clearCanvas = clearDark;
@@ -481,6 +511,7 @@ function setDarkMode()
 
 var services = [];
 
+// minimap
 var basicStatsDisplay, basicStatsCanvas;
 
 function getBasicStatusString ()
@@ -499,14 +530,17 @@ function updateBasicStats ()
     var ctx = basicStatsCanvas.getContext ("2d");
     var w = basicStatsCanvas.width;
     var h = basicStatsCanvas.height;
-    ctx.fillStyle = "#000";
+    ctx.fillStyle = "#222";
     ctx.fillRect(-w/2,-h/2,w,h);
+    ctx.fillStyle = "#000";
+    var s = localPlayerHealth / 5;
+    ctx.fillRect(-w/2*s,-h/2*s,w * s,h * s);
     ctx.fillStyle = "#a0f";
     ctx.fillRect(-2,-2,4,4);
     ctx.fillStyle = "#05f";
     var tempPos = new Pos(0, 0);
     tempPos.subtract(localPlayer.pos);
-    tempPos.scale(.01);
+    tempPos.scale(minimapScale);
     tempPos.x = Math.round(tempPos.x);
     tempPos.y = Math.round(tempPos.y);
     ctx.fillRect(tempPos.x - 2, tempPos.y - 2, 4, 4);
@@ -515,7 +549,7 @@ function updateBasicStats ()
     {
 	tempPos = restArea.copy();
 	tempPos.subtract(localPlayer.pos);
-	tempPos.scale(.01);
+	tempPos.scale(minimapScale);
 	tempPos.x = Math.round(tempPos.x);
 	tempPos.y = Math.round(tempPos.y);
 	ctx.fillRect(tempPos.x - 1, tempPos.y - 1, 2, 2);
@@ -531,10 +565,19 @@ function makeBasicStatsModule ()
     basicStatsCanvas = document.createElement("canvas");
     basicStatsCanvas.width = 200;
     basicStatsCanvas.height = 200;
-    basicStatsCanvas.getContext("2d").translate(100,100);
+    basicStatsCanvas.getContext("2d").save();
+    basicStatsCanvas.getContext("2d").translate(basicStatsCanvas.width/2,basicStatsCanvas.height/2);
     div.appendChild(basicStatsDisplay);
     div.appendChild(basicStatsCanvas);
     parentdiv.appendChild(div);
+}
+
+function resizeBasicStatsCanvas (s)
+{
+    basicStatsCanvas.getContext("2d").restore();
+    basicStatsCanvas.width = s;
+    basicStatsCanvas.height = s;
+    basicStatsCanvas.getContext("2d").translate(s/2,s/2);
 }
 
 var airplaneTracker = localPlayer.pos.copy();
@@ -663,7 +706,6 @@ function timerEvent() {
         tempEntity.draw();
         index += 1;
     }
-    displayGuideline();
     
     document.getElementById("coordinates").innerHTML = localPlayer.pos.toString();
     var tempOffset = localPlayer.pos.copy();
@@ -694,6 +736,15 @@ Player.prototype.collectTileConditional = function(direction) {
     var tempTile = getTileBufferValue(tempPos);
     if ((tempTile >= flourTile && tempTile <= breadTile)
         || (tempTile >= symbolStartTile && tempTile <= symbolStartTile + symbolTileAmount)) {
+	this.collectTile(direction);
+    }
+}
+
+Player.prototype.tryCollectIngredient = function (direction)
+{
+    var tempPos = this.getPosInWalkDirection(direction);
+    var tempTile = getTileBufferValue(tempPos);
+    if (tempTile >= flourTile && tempTile <= breadTile) {
 	this.collectTile(direction);
     }
 }
@@ -745,8 +796,8 @@ bore.step = function (dir)
     }
     for (var i = 0; i < c; ++i)
     {
-	//localPlayer.breakColorTileConditional((dir + 1) & 3);
-	//localPlayer.breakColorTileConditional((dir - 1) & 3);
+	localPlayer.tryCollectIngredient((dir + 1) & 3);
+	localPlayer.tryCollectIngredient((dir - 1) & 3);
 	if (bore.right)
 	    localPlayer.placeTile((dir + 1) & 3);
 	if (bore.left)
@@ -759,7 +810,7 @@ bore.step = function (dir)
     var delay = 70;
     if (!localPlayer.canWalkThroughTile(getTileBufferValue(localPlayer.getPosInWalkDirection(dir))))
     {
-	delay = 625;
+	delay = delayForBreak;
 	localPlayer.removeTile(dir);
     }
     bore.interval = setTimeout (function () {
@@ -804,7 +855,7 @@ function snakeMovePlayer (minx, maxx, yoff, callback, objecet)
     if (blocked)
     {
 	localPlayer.removeTile (dir);
-	delay = 625;
+	delay = delayForBreak;
     }
     objecet.interval = setTimeout (function () {
 	localPlayer.walkMotion (dir);
@@ -958,6 +1009,7 @@ getTileBuffer();
 loadRestAreas(areasString);
 makeBasicStatsModule();
 showOrHideModuleByName ("stats");
+hideModuleByName ("inventory");
 clearInterval(3);
 setInterval(timerEvent, Math.floor(1000 / framesPerSecond));
 setZoom(0);
