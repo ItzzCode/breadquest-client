@@ -38,7 +38,11 @@ Boteram vertical 1 | 14132, 12336
 Boteram vertical 2 | 15704, 21858
 Boteram vertical 3 by melody, a few days before 2021-05-24 | 15678, 29352
 Boteram vertical 4 | 15669, 33596
-deep bread, 2021-03-28 | 15811, 42440`;
+deep bread, 2021-03-28 | 15811, 42440
+Boteram vertical 5 by melody, 2021-05-31 | 15659, 68653
+ubq323, 2020-05-16 | 7529, 22
+ubq323, 2021-03-05 | 11886, -176
+poggi big sex | 9127, 141`;
 /*
 Votgil tunnel: -3548/-2759, -1100
 Wiki road: west -186/23195, -596
@@ -46,6 +50,7 @@ Boteram vertical: 15701, -596 south
 WhileTrue V0tgil tunnel | -3548/-2759, -1100
 Pointless road | -1000, -3551/-2991
 [unnamed road] | -3106, -1100/0
+[unnamed road] | 9000, 0/4000
 TOCC | -2671, -10
 
 Lone Oven | -4683, -6020
@@ -53,6 +58,8 @@ Lone Hospital | -4794, -6035
 
 People break me | 15743, 10182
 sus | 15702, 39573
+Esperanto | 345, 18
+Heav base | 11605, -131
  */
 
 var restAreas = [];

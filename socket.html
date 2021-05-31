@@ -1,0 +1,28 @@
+<!-- version 3 of the client.  If you're looking for version 2, the script modification for the default client, see myjs.js -->
+
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <style>
+      .colorButton {
+	  width: 24px;
+	  height: 24px;
+	  border: none;
+      }
+    </style>
+  </head>
+  <body bgcolor="#ccc">
+    <canvas id="canvas"></canvas>
+    <div id="buttonscontainer" style="float:right;">
+      <pre id="statsElement"></pre>
+      <div id="colorSelect"></div>
+      <input type="checkbox" id="leaveBlockTrail"><label for="leaveBlockTrail">Leave block trail</label>
+      <div id="trailSelect"></div>
+      <div id="chatElement"></div>
+    </div>
+    <script src="classes.js"></script>
+    <script src="bufferutils.js"></script>
+    <script src="socket.js"></script>
+  </body>
+</html>

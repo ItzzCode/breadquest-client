@@ -1,0 +1,37 @@
+
+
+Server to Client:
+setLocalPlayerInfo avatar breadCount username
+setTiles
+setLocalPlayerPos
+removeAllEntities
+addEntity
+addChatMessage
+removeAllOnlinePlayers
+addOnlinePlayer
+setInventory inventory
+setRespawnPos respawnPos
+setStats
+setAvatar
+setGuidelinePos
+
+Client to Server:
+startPlaying
+getTiles size
+walk dir
+assertPos pos
+getEntities
+addChatMessage text
+getChatMessages
+getOnlinePlayers
+removeTile direction
+getInventoryChanges
+placeTile direction tile
+collectTile direction
+getRespawnPosChanges
+getStats
+eatBread
+getAvatarChanges
+placeSymbolTile direction
+setGuidelinePos pos
+getGuidelinePos
