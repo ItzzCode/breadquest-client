@@ -29,6 +29,7 @@ Mel6 | 47, 22628
 Mel7 | -60, 25833
 Mel8, 2021-05-24 | 22, 37081
 Mel9, 2021-05-24 | 8640, 50014
+Mel:a, 2021-05-30 | 200, 25812
 Wikitown | 15701, -596
 Small Wikitown | 9103, -617
 Boteram cave | 16044, 797
@@ -51,6 +52,7 @@ Lone Oven | -4683, -6020
 Lone Hospital | -4794, -6035
 
 People break me | 15743, 10182
+sus | 15702, 39573
  */
 
 var restAreas = [];
