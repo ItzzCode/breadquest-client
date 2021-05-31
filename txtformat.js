@@ -47,7 +47,7 @@ function loadFile(file) {
 	for (var i = 0; i < result.length; i++)
 	    if (result.charCodeAt(i) >= 128)
 		console.log(result[i]);
-	console.log(result);
+	console.log(result, (result.length + 1) / (lineLength + 1));
     }, false);
     fileReader.readAsText(file);
 }
