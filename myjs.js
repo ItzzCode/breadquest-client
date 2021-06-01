@@ -17,19 +17,21 @@ var delayForBreak = 70;
 var areasString = `\
 Spawn | 111, 31
 Stantown | -1719, -2094
-Dusty Outpost | -1367, -2991
 Tuxtown | 175, -3775
+Dusty Outpost | -1367, -2991
 Musty Outpost | -815, -3617
-Mel | -4279, -10639
-Mel2 | -1731, -40
-Mel3 | -2024, -410
-Mel4 / rainbow lounge | -23, 5908
-Mel5 | -59, 7651
-Mel6 | 47, 22628
-Mel7 | -60, 25833
-Mel8, 2021-05-24 | 22, 37081
-Mel9, 2021-05-24 | 8640, 50014
-Mel:a, 2021-05-30 | 200, 25812
+Mel 1 | -4279, -10639
+Mel 2 | -1731, -40
+Mel 3 | -2024, -410
+Mel 4 / rainbow lounge | -23, 5908
+Mel 5 | -59, 7651
+Mel 6 | 47, 22628
+Mel 7 | -60, 25833
+Mel 8, 2021-05-24 | 22, 37081
+Mel 9, 2021-05-24 | 8640, 50014
+Mel A, 2021-05-30 | 200, 25812
+Mel B, 2021-05-31 | 9138, 100003
+Mel C, 2021-05-31 | 95, 98666
 Wikitown | 15701, -596
 Small Wikitown | 9103, -617
 Boteram cave | 16044, 797
