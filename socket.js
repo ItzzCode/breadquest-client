@@ -1,11 +1,13 @@
 'use strict';
 
 var gameUpdateSocket;
+const elMiniBuffer = document.getElementById ("miniBufferElement");
 const elChat = document.getElementById ("chatElement");
+const elPlayer = document.getElementById ("playerElement");
 const elStats = document.getElementById ("statsElement");
+const elBore = document.getElementById ("boreSelect");
 const elColorContainer = document.getElementById ("colorSelect");
 var aelColorButton = [];
-const elBlockTrail = document.getElementById ("leaveBlockTrail");
 const elTrailSelect = document.getElementById ("trailSelect");
 const canvas = document.getElementById ("canvas");
 const blockRenderSize = 12;
@@ -20,6 +22,7 @@ const colorsBlock = ["#a00", "#a50", "#aa0", "#0a0", "#0aa", "#00a", "#a0a", "#a
 const colorsBackground = ["#fcc", "#fec", "#ffe", "#efe", "#eff", "#eef", "#fef", "#eee"];
 
 const trailMessages = ["Default", "Blocks", "Nothing"];
+const boreMessages = ["N", "E", "S", "W", "Stop"];
 const TRAIL_DEFAULT = 0;
 const TRAIL_BLOCKS = 1;
 const TRAIL_NOTRACE = 2;
@@ -39,9 +42,19 @@ var tileToPlace = 0x84;
 var walkBudget = 0;
 const maxWalks = 32;
 
+function getBreadString ()
+{
+    var plus = Math.min (player.inventory [0x91], player.inventory [0x92], player.inventory [0x93]);
+    return player.inventory [0x94] + " ( + " + plus + " = " + (plus + player.inventory [0x94]) + ")";
+}
+
 function drawStats ()
 {
-    elStats.innerHTML = "Health: " + player.health + "\n" + player.pos.toString ();
+    document.bgColor = ["#000", "#f00", "#fa0", "#cc0", "#0a0", "#5af"][player.health];
+    elStats.innerHTML = "Health: " + player.health + "\n"
+	+ player.pos.toString ()+ "\n"
+	+ walkBudget + "\n"
+	+ "Bread: " + getBreadString ();
 }
 
 function drawError (message)
@@ -83,7 +96,12 @@ function drawEntities (aEntity)
 	pos.subeq (player.pos);
 	pos.addeq (posPlayerBuffer);
 	pos.subeq (posBoardBuffer);
-	drawSprite (pos.x, pos.y, 0xa0);
+	if (entity.className == "Enemy")
+	    drawSprite (pos.x, pos.y, 0xa0);
+	else if (entity.className == "Player")
+	    drawSprite (pos.x, pos.y, 0xa1);
+	else
+	    console.log (entity);
     }
 }
 
@@ -175,6 +193,19 @@ class Player
 	this.pos = new Vec (x, y);
 	this.color = color;
 	this.health;
+	this.inventory = {};
+    }
+    get distToEnemy ()
+    {
+	var dist = Number.MAX_SAFE_INTEGER;
+	for (var enemy of aEntityGlobal)
+	{
+	    if (enemy.className != "Enemy")
+		continue;
+	    var distToThisEnemy = player.pos.distOrthogonal (enemy.pos);
+	    dist = Math.min (distToThisEnemy, dist);
+	}
+	return dist;
     }
 }
 
@@ -198,12 +229,13 @@ class ManualControlService extends Service
 	player.pos.addeq (aVecFromDir [dir]);
 	scrollTileBuffer (aVecFromDir [dir]);
 	vDrawAll ();
+	if (this.trail == TRAIL_NOTRACE)
+	    qcPlaceSymbolTile (43);
 	qcWalk (dir);
 	if (this.trail == TRAIL_BLOCKS)
 	    qcPlaceTile (dir ^ 2, tileToPlace);
 	else if (this.trail == TRAIL_NOTRACE)
 	{
-	    qcPlaceSymbolTile (43);
 	    qcCollectTile (dir ^ 2);
 	}
 	sendCommandList ();
@@ -288,6 +320,7 @@ class PeriodicRequestsService extends Service
     constructor ()
     {
 	super ();
+	this.loopIndex = 0; // for doing events that happen every other tick or every third
     }
     timerEvent ()
     {
@@ -298,6 +331,10 @@ class PeriodicRequestsService extends Service
 	qcAssertPos ();
 	qcGetStats ();
 	sendCommandList ();
+	if (this.loopIndex % 6 == 0)
+	    qcGetInventoryChanges ();
+	++this.loopIndex;
+	this.loopIndex %= 24;
 	this.timeoutCode = setTimeout (this.timerEvent.bind (this), 1000);
     }
     start ()
@@ -319,39 +356,41 @@ class Bore extends Service
 	super ();
 	this.direction = 0;
 	this.waitingForBlock = false;
+	this.breakInterval = 300;
     }
     walk (dir)
     {
 	player.pos.addeq (aVecFromDir [dir]);
 	scrollTileBuffer (aVecFromDir [dir]);
 	qcWalk (dir);
-	qcCollectTile (dir ^ 1);
-	qcCollectTile (dir ^ 3);
+	var tile = getTileFromDirection (dir ^ 1);
+	if (tile >= 0x91 && tile <= 0x94)
+	    qcCollectTile (dir ^ 1);
+	tile = getTileFromDirection (dir ^ 3);
+	if (tile >= 0x91 && tile <= 0x94)
+	    qcCollectTile (dir ^ 3);
     }
     move ()
     {
-	var distToEnemy = 20;
-	for (var enemy of aEntityGlobal)
+	// if it's solid, go, because the breaker has it covered
+	if (isSolidInDirection (this.direction))
+	    this.walk (this.direction);
+	if (isSolidInDirection (this.direction))
 	{
-	    if (enemy.className != "Enemy")
-		continue;
-	    var distToThisEnemy = player.pos.distOrthogonal (enemy.pos);
-	    distToEnemy = Math.min (distToThisEnemy, distToEnemy);
+	    this.breakThings ();
+	    return;
 	}
-	if (distToEnemy < 5)
+	if (player.distToEnemy < 5)
 	{
-	    for (var i = 0; i < 8; ++i)
+	    while (player.distToEnemy < 5 && !isSolidInDirection (this.direction) && walkBudget > 0)
 	    {
 		this.walk (this.direction);
-		if (isSolidInDirection (this.direction) || walkBudget <= 0)
-		    break;
 	    }
 	}
 	else
 	{
-	    this.walk (this.direction);
-	    /*while (walkBudget > 16 && !isSolidInDirection (this.direction))
-	      this.walk (this.direction);*/
+	    while (walkBudget > 24 && !isSolidInDirection (this.direction))
+	      this.walk (this.direction);
 	    // in the cClearTiles... call, walkBudget could be 32 or any number; walkBudget is just the maximum that I care about
 	    let dist = cClearTilesInDirection (this.direction, walkBudget);
 	    if (dist != -1 && dist < walkBudget)
@@ -360,10 +399,23 @@ class Bore extends Service
 		    this.walk (this.direction);
 	    }
 	}
-	sendCommandList ();
 	vDrawAll ();
 	clearTimeout (this.timeoutCode);
-	this.timeoutCode = setTimeout (this.timerEvent.bind (this), 65);
+	if (isSolidInDirection (this.direction))
+	    this.breakThings ();
+	else
+	{
+	    sendCommandList ();
+	    this.timeoutCode = setTimeout (this.timerEvent.bind (this), 65);
+	}
+    }
+    breakThings ()
+    {
+	    qcRemoveTile (this.direction);
+	    sendCommandList ();
+	    this.waitingForBlock = true;
+	    clearTimeout (this.timeoutCode);
+	    this.timeoutCode = setTimeout (this.skipWaitForTiles.bind (this), this.breakInterval);
     }
     skipWaitForTiles ()
     {
@@ -376,11 +428,7 @@ class Bore extends Service
 	    return;
 	if (isSolidInDirection (this.direction))
 	{
-	    qcRemoveTile (this.direction);
-	    sendCommandList ();
-	    this.waitingForBlock = true;
-	    clearTimeout (this.timeoutCode);
-	    this.timeoutCode = setTimeout (this.skipWaitForTiles.bind (this), 300);
+	    this.breakThings ();
 	}
 	else
 	{
@@ -464,20 +512,95 @@ class TileSelectorService extends Service
     }
 }
 
+class MiscCommandsService extends Service
+{
+    constructor ()
+    {
+	super ();
+    }
+    onkeydown (code)
+    {
+	if (code == "KeyB")
+	{
+	    if (player.health < 5 && player.inventory [0x94] > 0)
+	    {
+		--player.inventory [0x94];
+		++player.health;
+	    }
+	    qcEatBread ();
+	}
+    }
+}
+
+class MiniBufferService extends Service
+{
+    constructor ()
+    {
+	super ();
+	this.running = false;
+	this.text = "";
+    }
+    evaluateCommand ()
+    {
+	//performAddChatMessage ({text: "> " + this.text});
+	var parts = this.text.split (" ");
+	if (parts[0] == "b")
+	{
+	    var n = parseInt (parts[1], 10);
+	    if (bore.running)
+		bore.stop();
+	    if (n < 4)
+		bore.start (n);
+	}
+	elMiniBuffer.innerHTML += " [last command]";
+	this.text = "";
+	this.running = false;
+    }
+    onkeydown (code, key)
+    {
+	if (!this.running)
+	    return;
+	if (code == "Enter")
+	    this.evaluateCommand ();
+	else if (key != "Shift" && key != "Alt" && key != "Control")
+	{
+	    if (key == "Backspace")
+	    {
+		if (this.text.length)
+		    this.text = this.text.slice (0, -1);
+		else
+		    this.running = false;
+	    }
+	    else
+		this.text += key;
+	    elMiniBuffer.innerHTML = this.text;
+	}
+    }
+}
+
 var srvcManual = new ManualControlService ();
 var srvcBreak = new ManualBreakService ();
 var srvcPeriodic = new PeriodicRequestsService ();
 var srvcPlaceText = new PlaceTextService ();
+var srvcMiscCommands = new MiscCommandsService ();
 var bore = new Bore ();
 var srvcWalkCounter = new WalkCounterService ();
 var srvcTileSelector = new TileSelectorService ();
+var srvcMiniBuffer = new MiniBufferService ();
 
 function handleKeydown (e)
 {
     if (!e.repeat)
     {
-	for (var service of aServiceGlobal)
-	    service.onkeydown (e.code);
+	if (srvcMiniBuffer.running)
+	    srvcMiniBuffer.onkeydown (e.code, e.key);
+	else if (e.key == ":")
+	    srvcMiniBuffer.running = true;
+	else
+	{
+	    for (var service of aServiceGlobal)
+		service.onkeydown (e.code, e.key);
+	}
     }
 }
 
@@ -531,6 +654,22 @@ function performSetLocalPlayerPos (pos)
     player.pos.seteqjson (pos);
 }
 
+function performSetInventory (command)
+{
+    player.inventory = command.inventory;
+    drawStats ();
+}
+
+function performRemoveAllOnlinePlayers (command)
+{
+    elPlayer.innerHTML = "";
+}
+
+function performAddOnlinePlayer (command)
+{
+    elPlayer.innerHTML += command.username + "\n";
+}
+
 function receiveCommandList (list) // handle commands from server
 {
     if (logCommands)
@@ -563,15 +702,24 @@ function receiveCommandList (list) // handle commands from server
 	    case "addChatMessage":
 	    performAddChatMessage (command);
 	    break;
-	    // removeAllOnlinePlayers
-	    // addOnlinePlayer
-	    // setInventory inventory
-	    // setRespawnPos respawnPos
+	    case "removeAllOnlinePlayers":
+	    performRemoveAllOnlinePlayers (command);
+	    break;
+	    case "addOnlinePlayer":
+	    performAddOnlinePlayer (command);
+	    break;
+	    case "setInventory":
+	    performSetInventory (command);
+	    break;
+	    case "setRespawnPos":
+	    break;
 	    case "setStats":
 	    performSetStats (command);
 	    break;
-	    // setAvatar
-	    // setGuidelinePos
+	    case "setAvatar":
+	    break;
+	    case "setGuidelinePos":
+	    break;
 	}
     }
     if (redraw)
@@ -592,6 +740,20 @@ function updateBlockTrail ()
 	{
 	    srvcManual.trail = input.value;
 	    break;
+	}
+    }
+}
+
+function updateBoreInput ()
+{
+    for (var input of elBore.children)
+    {
+	if (input.checked)
+	{
+	    if (bore.running)
+		bore.stop();
+	    if (input.value < 4)
+		bore.start (Number(input.value));
 	}
     }
 }
@@ -620,6 +782,20 @@ function initColorButtons ()
 	elTrailSelect.appendChild (input);
 	elTrailSelect.appendChild (label);
     }
+    elBore.addEventListener ("click", updateBoreInput, false);
+    for (var i = 0; i < 5; ++i)
+    {
+	var input = document.createElement ("input");
+	input.type = "radio";
+	input.setAttribute ("id", "boreInput" + i);
+	input.setAttribute ("name", "boreInputs");
+	input.setAttribute ("value", i);
+	var label = document.createElement ("label");
+	label.setAttribute ("for", "boreInput" + i);
+	label.innerText = boreMessages [i];
+	elBore.appendChild (input);
+	elBore.appendChild (label);
+    }
 }
 
 function init ()
@@ -636,6 +812,7 @@ function init ()
 	srvcPlaceText.start ();
 	srvcWalkCounter.start ();
 	srvcTileSelector.start ();
+	srvcMiscCommands.start ();
     }
     gameUpdateSocket.onmessage = function (e)
     {
@@ -643,7 +820,10 @@ function init ()
 	if (data.success)
 	    receiveCommandList (data.commandList); // handle commands from server
 	else
+	{
+	    srvcPeriodic.stop ();
 	    drawError (data.message);
+	}
     }
     qcStartPlaying ();
     qcAssertPos ();

@@ -65,9 +65,14 @@ function getTileFromBufferPos (relpos)
     return aTileGlobal [i];
 }
 
+function getTileFromDirection (dir)
+{
+    return getTileFromPlayerPos (aVecFromDir [dir]);
+}
+
 function isSolidInDirection (dir)
 {
-    var tile = getTileFromPlayerPos (aVecFromDir [dir]);
+    var tile = getTileFromDirection (dir);
     return (tile >= tileBlockFirst && tile <= tileBlockLast) || tile == 0x95 || tile == 0x96;
 }
 
@@ -137,7 +142,10 @@ function loadTileBuffer (command, posPlayer)
 		    rx = wp.x + 2;
 		else
 		    rx = wp.x - 2;
-		console.log (rx, y + player.pos.y);
+		var message = rx + ", " + (y + player.pos.y);
+		//console.log (message);
+		if (elChat.childElementCount == 0 || message != elChat.children[elChat.childElementCount-1].innerHTML)
+		    performAddChatMessage ({text: message});
 	    }
 	    setTileFromPlayerPos (new Vec (x, y), tile);
 	    ++i;

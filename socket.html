@@ -5,10 +5,24 @@
   <head>
     <meta charset="utf-8">
     <style>
+      body {
+	  margin: 0;
+      }
+      #buttonscontainer {
+	  max-width: 50%;
+      }
       .colorButton {
 	  width: 24px;
 	  height: 24px;
 	  border: none;
+      }
+      #chatElement {
+	  height: 4em;
+	  overflow: scroll;
+	  padding-bottom: 250px;
+      }
+      #chatElement pre {
+	  word-wrap: break-word;
       }
     </style>
   </head>
@@ -16,9 +30,11 @@
     <canvas id="canvas"></canvas>
     <div id="buttonscontainer" style="float:right;">
       <pre id="statsElement"></pre>
+      <pre id="playerElement"></pre>
+      <pre id="miniBufferElement"></pre>
       <div id="colorSelect"></div>
-      <input type="checkbox" id="leaveBlockTrail"><label for="leaveBlockTrail">Leave block trail</label>
       <div id="trailSelect"></div>
+      <div id="boreSelect"></div>
       <div id="chatElement"></div>
     </div>
     <script src="classes.js"></script>
