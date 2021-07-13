@@ -1,5 +1,7 @@
 'use strict';
 
+var useSmallMode = true;
+
 var gameUpdateSocket;
 const elMiniBuffer = document.getElementById ("miniBufferElement");
 const elChat = document.getElementById ("chatElement");
@@ -20,6 +22,14 @@ const spritesheet = new Image (192, 192);
 
 const colorsBlock = ["#a00", "#a50", "#aa0", "#0a0", "#0aa", "#00a", "#a0a", "#aaa"];
 const colorsBackground = ["#fcc", "#fec", "#ffe", "#efe", "#eff", "#eef", "#fef", "#eee"];
+
+const colors = `\
+fff
+f33 fa0 cc0 0c0  0af 33c a0a aaa
+afa fca ffe afa  acf cfc fcf ccc
+888 888 888 888  000 000
+0 1 2 3 4 5 6 7 8
+000`.split (/\s+/).map (str => "#" + str);
 
 const trailMessages = ["Default", "Blocks", "Nothing"];
 const boreMessages = ["N", "E", "S", "W", "Stop"];
@@ -50,7 +60,7 @@ function getBreadString ()
 
 function drawStats ()
 {
-    document.bgColor = ["#000", "#f00", "#fa0", "#cc0", "#0a0", "#5af"][player.health];
+    document.bgColor = colors[player.health];
     elStats.innerHTML = "Health: " + player.health + "\n"
 	+ player.pos.toString ()+ "\n"
 	+ walkBudget + "\n"
@@ -70,15 +80,55 @@ function drawError (message)
 {
     ctx.fillStyle = color;
     ctx.fillRect ();
-}*/
+    }*/
 
 function drawSprite (x, y, tile)
 {
-    ctx.drawImage (spritesheet,
-		   (tile & 0xf) * blockRenderSize, (tile >> 4) * blockRenderSize,
-		   blockRenderSize, blockRenderSize,
-		   x * blockRenderSize, y * blockRenderSize,
-		   blockRenderSize, blockRenderSize,);
+    if (blockRenderSize == 12)
+    {
+	ctx.drawImage (spritesheet,
+		       (tile & 0xf) * blockRenderSize, (tile >> 4) * blockRenderSize,
+		       blockRenderSize, blockRenderSize,
+		       x * blockRenderSize, y * blockRenderSize,
+		       blockRenderSize, blockRenderSize,);
+    }
+    else
+    {
+	if (tile == 0xa0)
+	{
+	    ctx.fillStyle = "#000";
+	    ctx.fillRect (
+		x * blockRenderSize + 1, y * blockRenderSize + 1,
+		blockRenderSize - 2, blockRenderSize - 2
+	    );
+	    ctx.fillStyle = colors [0];
+	    ctx.fillRect (
+		x * blockRenderSize + 2, y * blockRenderSize + 2,
+		blockRenderSize - 4, blockRenderSize - 4
+	    );
+	    ctx.fillStyle = colors [8];
+	    ctx.fillRect (
+		x * blockRenderSize + 3, y * blockRenderSize + 3,
+		blockRenderSize - 6, blockRenderSize - 6
+	    );
+	}
+	else if (tile > 0xa0)
+	{
+	    ctx.fillStyle = colors [tile - 0xa0];
+	    ctx.fillRect (
+		x * blockRenderSize + 2, y * blockRenderSize + 2,
+		blockRenderSize - 4, blockRenderSize - 4
+	    );
+	}
+	else if (tile & 128)
+	{
+	    ctx.fillStyle = colors [tile & 127];
+	    ctx.fillRect (
+		x * blockRenderSize, y * blockRenderSize,
+		blockRenderSize, blockRenderSize
+	    );
+	}
+    }
 }
 
 function drawEntities (aEntity)
@@ -105,7 +155,7 @@ function drawEntities (aEntity)
     }
 }
 
-function drawTiles ()
+function drawTilesAsSprites ()
 {
     const size = cTileBoardHeight;
     ctx.fillStyle = "#fff";
@@ -144,7 +194,7 @@ function drawTiles ()
 
 function vDrawAll ()
 {
-    drawTiles ();
+    drawTilesAsSprites ();
     drawEntities (aEntityGlobal);
     ctx.strokeStyle = "#000";
     ctx.beginPath ();
@@ -289,7 +339,7 @@ class ManualBreakService extends Service
     }
     directionFromKey (code)
     {
-	return code == "KeyL" ? 0 : code == "Semicolon" ? 1 : code == "KeyK" ? 2 : code == "KeyJ" ? 3 : 4;
+	return code == "KeyK" ? 0 : code == "KeyL" ? 1 : code == "KeyJ" ? 2 : code == "KeyH" ? 3 : 4;
     }
     onkeydown (code)
     {
@@ -532,6 +582,107 @@ class MiscCommandsService extends Service
     }
 }
 
+class TeleportBreadService extends Service // do flood and teleport to nearest ingredient
+{
+    constructor ()
+    {
+	super ();
+    }
+    walk (dir)
+    {
+	player.pos.addeq (aVecFromDir [dir]);
+	scrollTileBuffer (aVecFromDir [dir]);
+	qcWalk (dir);
+    }
+    doThing (cap) // do the thing
+    {
+	var darr = new Uint8Array (cTileBufferHeight * cTileBufferHeight);
+	darr.fill (0xff);
+	darr [posPlayerBuffer.y * cTileBufferHeight + posPlayerBuffer.x] = 0;
+	var aPosX = new Uint16Array (cap * 4);
+	var aPosY = new Uint16Array (cap * 4);
+	var cPos = 1;
+	aPosX [0] = posPlayerBuffer.x;
+	aPosY [0] = posPlayerBuffer.y;
+	var foundIngredient = false;
+	findPos:
+	for (var d = 0; d < cap; ++d)
+	{
+	    // test each pos for ingredient, break if pos has ingredient
+	    for (var n = 0; n < cPos; ++n)
+	    {
+		var tile = aTileGlobal [aPosY [n] * cTileBufferHeight + aPosX [n]];
+		if (tile >= 0x91 && tile <= 0x93)
+		{
+		    aPosX [0] = aPosX [n];
+		    aPosY [0] = aPosY [n];
+		    foundIngredient = true;
+		    break findPos;
+		    // now the pos and walk distance will be stored in aPosX and aPosY and darr
+		}
+	    }
+	    // set up new pos values, fill in their distances
+	    var aPosX1 = new Uint16Array (cap * 4);
+	    var aPosY1 = new Uint16Array (cap * 4);
+	    var cPos1 = 0;
+	    for (var n = 0; n < cPos; ++n)
+	    {
+		for (var coords of [[aPosX [n], aPosY [n] - 1], [aPosX [n] + 1, aPosY [n]], [aPosX [n], aPosY [n] + 1], [aPosX [n] - 1, aPosY [n]]])
+		{
+		    var ind = coords [1] * cTileBufferHeight + coords [0];
+		    if (darr [ind] == 0xff && canWalkThroughTile (aTileGlobal [ind]))
+		    {
+			aPosX1 [cPos1] = coords [0];
+			aPosY1 [cPos1] = coords [1];
+			darr [ind] = darr [aPosY [n] * cTileBufferHeight + aPosX [n]] + 1;
+			++cPos1;
+		    }
+		}
+	    }
+	    aPosX = aPosX1;
+	    aPosY = aPosY1;
+	    cPos = cPos1;
+	}
+	if (!foundIngredient)
+	    return;
+	// now the pos and walk distance are stored in aPosX [0], aPosY [0], and darr is filled sufficienty
+	// we need to fill an array of walks so we know the path
+	var x = aPosX [0];
+	var y = aPosY [0];
+	const walksToIngredient = darr [aPosY [0] * cTileBufferHeight + aPosX [0]];
+	const aWalk = new Uint8Array (walksToIngredient);
+	for (var i = walksToIngredient - 1; i >= 0; --i)
+	{
+	    var dir = 2; // reverse direction
+	    for (var coords of [[x,y-1], [x+1,y], [x,y+1], [x-1,y]])
+	    {
+		if (darr [coords [1] * cTileBufferHeight + coords [0]] == darr [y * cTileBufferHeight + x] - 1)
+		{
+		    aWalk [i] = dir & 3;
+		    x = coords [0];
+		    y = coords [1];
+		    break;
+		}
+		++dir;
+	    }
+	}
+	// now the path should be in aWalk
+	// do the walking
+	for (var i = 0; i < walksToIngredient; ++i)
+	{
+	    this.walk (aWalk [i]);
+	}
+	vDrawAll ();
+    }
+    onkeydown (code)
+    {
+	if (code == "Semicolon")
+	{
+	    this.doThing (Math.min (walkBudget, 20));
+	}
+    }
+}
+
 class MiniBufferService extends Service
 {
     constructor ()
@@ -552,6 +703,12 @@ class MiniBufferService extends Service
 	    if (n < 4)
 		bore.start (n);
 	}
+	else if (parts [0] == "t")
+	{
+	    qcAddChatMessage (this.text.substring (2));
+	}
+	else if (parts[0] == "c")
+	    qcPlaceSymbolTile (this.text.charCodeAt (2) & 255);
 	elMiniBuffer.innerHTML += " [last command]";
 	this.text = "";
 	this.running = false;
@@ -581,8 +738,9 @@ class MiniBufferService extends Service
 var srvcManual = new ManualControlService ();
 var srvcBreak = new ManualBreakService ();
 var srvcPeriodic = new PeriodicRequestsService ();
-var srvcPlaceText = new PlaceTextService ();
+//var srvcPlaceText = new PlaceTextService ();
 var srvcMiscCommands = new MiscCommandsService ();
+var srvcTeleportBread = new TeleportBreadService ();
 var bore = new Bore ();
 var srvcWalkCounter = new WalkCounterService ();
 var srvcTileSelector = new TileSelectorService ();
@@ -590,6 +748,7 @@ var srvcMiniBuffer = new MiniBufferService ();
 
 function handleKeydown (e)
 {
+    e.preventDefault ();
     if (!e.repeat)
     {
 	if (srvcMiniBuffer.running)
@@ -809,7 +968,7 @@ function init ()
 	srvcManual.start ();
 	srvcBreak.start ();
 	srvcPeriodic.start ();
-	srvcPlaceText.start ();
+	//srvcPlaceText.start ();
 	srvcWalkCounter.start ();
 	srvcTileSelector.start ();
 	srvcMiscCommands.start ();

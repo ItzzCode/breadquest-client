@@ -1,11 +1,15 @@
 'use strict';
 
+// if you change these internals, you may also want to visit the teleport bread service because the teleport bread service references aTileGlobal
+
 const tileSpriteFirst = 0x21;
 const tileBlockFirst = 0x81;
 const tileBlockLast = 0x88;
 const tileTrailFirst = 0x89;
 const tileTrailLast = 0x90;
 const tileSpriteLast = 0x96;
+const tileOven = 0x95;
+const tileHospital = 0x96;
 
 const cTileBufferHeight = 100;
 const cTileBoardHeight = 50;
@@ -90,6 +94,16 @@ function cClearTilesInDirection (dir, max=32)
 	    return i - 1;
     }
     return -1;
+}
+
+function isSolidTile (tile)
+{
+    return (tile >= tileBlockFirst && tile <= tileBlockLast) || tile == tileOven || tile == tileHospital || tile == 0;
+}
+
+function canWalkThroughTile (tile)
+{
+    return !isSolidTile (tile);
 }
 
 function canPlaceInDirection (dir)
