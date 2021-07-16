@@ -672,13 +672,15 @@ class TeleportBreadService extends Service // do flood and teleport to nearest i
 	{
 	    this.walk (aWalk [i]);
 	}
+	setTileFromPlayerPos (new Vec(0,0), 0x80);
 	vDrawAll ();
     }
     onkeydown (code)
     {
 	if (code == "Semicolon")
 	{
-	    this.doThing (Math.min (walkBudget, 20));
+	    if (walkBudget > 5)
+		this.doThing (Math.min (walkBudget, 20));
 	}
     }
 }
@@ -972,6 +974,7 @@ function init ()
 	srvcWalkCounter.start ();
 	srvcTileSelector.start ();
 	srvcMiscCommands.start ();
+	srvcTeleportBread.start ();
     }
     gameUpdateSocket.onmessage = function (e)
     {
@@ -991,5 +994,5 @@ function init ()
     qcGetChatMessages ();
 }
 spritesheet.onload = init;
-spritesheet.src = "sprites.png";
+spritesheet.src = "sprites-less.png";
 
