@@ -52,6 +52,23 @@ var tileToPlace = 0x84;
 var walkBudget = 0;
 const maxWalks = 32;
 
+function areaStringToArea (str)
+{
+    var dxy = str.indexOf (" ");
+    var dyn = str.indexOf (" ", dxy + 1);
+    var x = Number (str.substring (0, dxy));
+    var y = Number (str.substring (dxy + 1, dyn));
+    var nam = str.substring (dyn + 1);
+    return [x, y, nam];
+}
+
+const areas = areasString.split ("\n").map (areaStringToArea);
+
+function getAreasString ()
+{
+    return areas.map (arr => arr.join (" ")).join ("\n");
+}
+
 function getBreadString ()
 {
     var plus = Math.min (player.inventory [0x91], player.inventory [0x92], player.inventory [0x93]);
@@ -293,9 +310,12 @@ class ManualControlService extends Service
     timerEvent ()
     {
 	if (!this.directions.length)
+	{
+	    clearInterval (this.timeoutCode);
 	    return;
+	}
 	this.takeStep (this.directions [this.directions.length - 1]);
-	this.timeoutCode = setTimeout (this.timerEvent.bind(this), 65);
+	//this.timeoutCode = setTimeout (this.timerEvent.bind(this), 65);
     };
     directionFromKey (code)
     {
@@ -314,6 +334,7 @@ class ManualControlService extends Service
 	this.directions.push (dir);
 	clearTimeout (this.timeoutCode);
 	this.timerEvent ();
+	this.timeoutCode = setInterval (this.timerEvent.bind (this), 65);
     }
     onkeyup (code)
     {
@@ -485,9 +506,6 @@ class Bore extends Service
 	    this.waitingForBlock = false;
 	    this.move ();
 	}
-	//qcRemoveTile (this.direction);
-	//console.log (this);
-	//console.log ("hi");
     }
     onsettiles ()
     {
@@ -508,6 +526,45 @@ class Bore extends Service
 	this.direction = dir;
 	clearTimeout (this.timeoutCode);
 	this.timerEvent ();
+    }
+}
+
+var walks = 0;
+class AutoWalkService extends Service
+{
+    constructor ()
+    {
+	super ();
+	this.direction = 0;
+    }
+    walk (dir)
+    {
+	player.pos.addeq (aVecFromDir [dir]);
+	scrollTileBuffer (aVecFromDir [dir]);
+	qcWalk (dir);
+	++walks;
+    }
+    move (dir)
+    {
+	if (player.distToEnemy < 5)
+	{
+	    while (player.distToEnemy < 5 && !isSolidInDirection (dir) && walkBudget > 0)
+		this.walk (dir);
+	}
+	else if (walkBudget > 24 && !isSolidInDirection (dir))
+	    this.walk (dir);
+	vDrawAll ();
+    }
+    timerEvent ()
+    {
+	this.move (this.direction);
+    }
+    start (dir)
+    {
+	this.running = true;
+	this.direction = dir;
+	clearTimeout (this.timeoutCode);
+	this.timeoutCode = setInterval (this.timerEvent.bind (this), 65);
     }
 }
 
@@ -705,6 +762,14 @@ class MiniBufferService extends Service
 	    if (n < 4)
 		bore.start (n);
 	}
+	else if (parts[0] == "m")
+	{
+	    var n = parseInt (parts[1], 10);
+	    if (srvcAutoWalk.running)
+		srvcAutoWalk.stop();
+	    if (n < 4)
+		srvcAutoWalk.start (n & 3);
+	}
 	else if (parts [0] == "t")
 	{
 	    qcAddChatMessage (this.text.substring (2));
@@ -744,6 +809,7 @@ var srvcPeriodic = new PeriodicRequestsService ();
 var srvcMiscCommands = new MiscCommandsService ();
 var srvcTeleportBread = new TeleportBreadService ();
 var bore = new Bore ();
+var srvcAutoWalk = new AutoWalkService ();
 var srvcWalkCounter = new WalkCounterService ();
 var srvcTileSelector = new TileSelectorService ();
 var srvcMiniBuffer = new MiniBufferService ();
