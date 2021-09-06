@@ -172,6 +172,21 @@ function drawEntities (aEntity)
     }
 }
 
+function drawAreas ()
+{
+    ctx.fillStyle = "#f00";
+    for (var area of areas)
+    {
+	var xd = area[0] - player.pos.x;
+	var yd = area[1] - player.pos.y;
+	xd /= 128;
+	yd /= 128;
+	xd += canvas.width  / 2 - 3 + blockRenderSize / 2;
+	yd += canvas.height / 2 - 3 + blockRenderSize / 2;
+	ctx.fillRect (xd, yd, 6, 6);
+    }
+}
+
 function drawTilesAsSprites ()
 {
     const size = cTileBoardHeight;
@@ -213,6 +228,7 @@ function vDrawAll ()
 {
     drawTilesAsSprites ();
     drawEntities (aEntityGlobal);
+    drawAreas ();
     ctx.strokeStyle = "#000";
     ctx.beginPath ();
     ctx.strokeRect (10*blockRenderSize,10*blockRenderSize,30*blockRenderSize,30*blockRenderSize);
